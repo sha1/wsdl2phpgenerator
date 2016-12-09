@@ -19,31 +19,35 @@ class StreamContextFactory
     public function create(ConfigInterface $config)
     {
         $options = array();
-        $settings = $config->get('soapClientOptions');
+        $headers = array();
 
-        // Basic authentication.
-        if (!empty($settings['authentication'])
-            && $settings['authentication'] == SOAP_AUTHENTICATION_DIGEST) {
-            throw new InvalidOptionsException('Digest authentication is not supported.');
+        $proxy = $config->get('proxy');
+        if (is_array($proxy)) {
+            $options = array(
+                'http' => array(
+                    'proxy' => $proxy['proxy_host'] . ':' . $proxy['proxy_port']
+                )
+            );
+            if (isset($proxy['proxy_login']) && isset($proxy['proxy_password'])) {
+                // Support for proxy authentication is untested. The current implementation is based on
+                // http://php.net/manual/en/function.stream-context-create.php#74431.
+                $headers[] = 'Proxy-Authorization: Basic ' .
+                    base64_encode($proxy['proxy_login'] . ':' . $proxy['proxy_password']);
+            }
         }
 
-        if (isset($settings['login']) && isset($settings['password'])) {
-            $options['http']['header'][] = 'Authorization: Basic ' .
-                base64_encode($settings['login'] . ':' . $settings['password']);
+        $soapOptions = $config->get('soapClientOptions');
+
+        if ((!isset($soapOptions['authentication']) || $soapOptions['authentication'] === SOAP_AUTHENTICATION_BASIC) &&
+            isset($soapOptions['login']) &&
+            isset($soapOptions['password'])
+        ) {
+            $headers[] = 'Authorization: Basic ' .
+                base64_encode($soapOptions['login'] . ':' . $soapOptions['password']);
         }
 
-        // Proxy configuration.
-        if (!empty($settings['proxy_host'])) {
-            $options['http']['proxy'] = $settings['proxy_host'];
-
-            if (!empty($settings['proxy_port'])) {
-                $options['http']['proxy'] .= ':' . $settings['proxy_port'];
-            }
-
-            if (isset($settings['proxy_login']) && isset($settings['proxy_password'])) {
-                $options['http']['header'][] = 'Proxy-Authorization: Basic ' .
-                    base64_encode($settings['proxy_login'] . ':' . $settings['proxy_password']);
-            }
+        if (count($headers) > 0) {
+            $options['http']['header'] = $headers;
         }
 
         return stream_context_create($options);
