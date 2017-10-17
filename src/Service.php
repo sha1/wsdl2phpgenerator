@@ -163,6 +163,9 @@ class Service implements ClassGenerator
     }
   }' . PHP_EOL;
         $source .= '  $options = array_merge(' . var_export($this->config->get('soapClientOptions'), true) . ', $options);' . PHP_EOL;
+        $source .= 'if (isset($options[\'stream_context\'])) {
+    $options[\'stream_context\'] = stream_context_create($options[\'stream_context\']);
+  }' . PHP_EOL;
         $source .= '  if (!$wsdl) {' . PHP_EOL;
         $source .= '    $wsdl = \'' . $this->config->get('inputFile') . '\';' . PHP_EOL;
         $source .= '  }' . PHP_EOL;

@@ -8,6 +8,7 @@ use Exception;
 use SoapClient;
 use SoapFault;
 use Wsdl2PhpGenerator\ConfigInterface;
+use Wsdl2PhpGenerator\StreamContextFactory;
 
 /**
  * The WSDL document represents a file which is used to access a SOAP service.
@@ -39,6 +40,11 @@ class WsdlDocument extends SchemaDocument
         // Never use PHP WSDL cache to when creating the SoapClient instance used to extract information.
         // Otherwise we risk generating code for a WSDL that is no longer valid.
         $options = array_merge($this->config->get('soapClientOptions'), array('cache_wsdl' => WSDL_CACHE_NONE));
+
+        if (!empty($options['stream_context'])) {
+            $streamContextFactory = new StreamContextFactory();
+            $options['stream_context'] = $streamContextFactory->create($config);
+        }
 
         try {
             $soapClientClass = new \ReflectionClass($this->config->get('soapClientClass'));
